@@ -15,7 +15,11 @@
 #include <queue>
 #include <vector>
 #include <algorithm>
-#include<iostream>
+#include <iostream>
+#include <string.h>
+#include <iomanip>
+#include <ctime>
+#include <sstream>
 
 //pcl lib
 #include <pcl_conversions/pcl_conversions.h>
@@ -36,6 +40,7 @@ IMU_DATA IMU;
 LIDAR_DATA LIDAR;
 
 #define DEBUG false
+#define SAVE true
 
 std::array<float,3> cart2sph(float x, float y, float z)
 {
@@ -102,6 +107,42 @@ void quat2DCM(double q1, double q2, double q3, double q4)
     IMU.DCM[2][0] = 2 * (q1 * q3 - q2 * q4);
     IMU.DCM[2][1] = 2 * (q2 * q3 + q1 * q4);
     IMU.DCM[2][2] = q4 * q4 - q1 * q1 - q2 * q2 + q3 * q3;
+}
+
+// PointCloud2 to PCL
+pcl::PointCloud<pcl::PointXYZI> cloudmsg2cloud(sensor_msgs::PointCloud2 cloudmsg)
+{
+    pcl::PointCloud<pcl::PointXYZI> cloud_dst;
+    pcl::fromROSMsg(cloudmsg, cloud_dst);
+    return cloud_dst;
+}
+
+// Save into PCD file
+void savePCDfile(sensor_msgs::PointCloud2 cloudmsg)
+{
+    pcl::PointCloud<pcl::PointXYZI> cloud_dst;
+    pcl::fromROSMsg(cloudmsg, cloud_dst);
+
+    try
+    {
+        //cloud_dst = cloudmsg2cloud(cloudmsg);
+        std::string filename;
+        auto t = std::time(nullptr);
+        auto tm = *std::localtime(&t);
+
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%d %H-%M-%S");
+        auto str = oss.str();
+
+        filename = "/home/iw-robot/vicsen_slam_ws/map_" + str + ".pcd";
+        pcl::io::savePCDFile( filename, cloud_dst, true ); // Binary format
+        //pcl::io::savePCDFile( "cloud.pcd", cloud_dst, false ); // ASCII format
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+    
 }
 
 
@@ -227,13 +268,16 @@ void lidar_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
         double median_vel[] = {0.0, 0.0, 0.0};
 
         qsort((void *)vx, sizeof(vx) / sizeof(vx[0]), sizeof(vx[0]), comparisonFunctionDouble);
-        qsort((void *)vy, sizeof(vy) / sizeof(vy[0]), sizeof(vy[0]), comparisonFunctionDouble);
-            
+        //qsort((void *)vy, sizeof(vy) / sizeof(vy[0]), sizeof(vy[0]), comparisonFunctionDouble);
+        //qsort((void *)vz, sizeof(vz) / sizeof(vz[0]), sizeof(vz[0]), comparisonFunctionDouble);
+
         median_vx = getMedian(vx, sizeof(vx) / sizeof(vx[0]));
-        median_vy = getMedian(vy, sizeof(vy) / sizeof(vy[0]));
-        median_vz = getMedian(vz, sizeof(vz) / sizeof(vz[0]));   
+        //median_vy = getMedian(vy, sizeof(vy) / sizeof(vy[0]));
+        //median_vz = getMedian(vz, sizeof(vz) / sizeof(vz[0]));   
         
-        median_vel[0] = median_vx; median_vel[1] = median_vy; median_vel[2] = median_vz;
+        median_vel[0] = median_vx; 
+        median_vel[1] = 0;//median_vy; 
+        median_vel[2] = 0;//median_vz;
 
         if(DEBUG)
         {
@@ -355,7 +399,7 @@ void lidar_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
         }
 
         // Publish odometry & map
-        sensor_msgs::PointCloud2 pc_map;
+        //sensor_msgs::PointCloud2 pc_map;
 
         ////////// Odom /////////
         nav_msgs::Odometry odom;
@@ -481,7 +525,7 @@ void lidar_callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
         printf("====================================================================\n\n");
 
     } 
-
+    
     return;
 }
 
@@ -500,6 +544,10 @@ int main(int argc, char **argv)
     pub_map = nh.advertise<sensor_msgs::PointCloud2> ("/map/map", 1000);
 
     ros::spin();
+
+
+    if(SAVE)
+        savePCDfile(pc_map);
 
     return 0;
 }

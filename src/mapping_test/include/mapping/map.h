@@ -63,3 +63,7 @@ struct LIDAR_DATA
 std::queue<IMU_DATA> imuBuf;
 double prev_imu_eul_yaw = 0.0;
 
+
+// Publish odometry & map
+sensor_msgs::PointCloud2 pc_map;
+

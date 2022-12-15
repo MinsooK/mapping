@@ -2,7 +2,7 @@
 <launch>
 
 <!--- Comment this if you use real sensor -->
-    <node pkg="rosbag" type="play" name="rosbag_play" args="-r 3 --clock $(env HOME)/dataset/ifws/221125/2022-11-25-14-51-36.bag"/> 
+    <node pkg="rosbag" type="play" name="rosbag_play" args="-r 3 --clock $(env HOME)/dataset/ifws/221125/2022-11-25-14-39-26.bag"/> 
     <param name="/use_sim_time" value="true" />
     
     <node pkg="mapping_test" type="map_test_node" name="map_node" output="screen"/>
@@ -13,3 +13,4 @@
     </group>
 
 </launch>
+
